@@ -38,7 +38,7 @@ def determine_generator_string():
         if vs_version == None:
             if os.path.exists('%ProgramFiles(x86)%\\Microsoft Visual Studio\\2019'):
                 vs_version = '16.0'
-            if os.path.exists('%ProgramFiles(x86)%\\Microsoft Visual Studio\\2017'):
+            elif os.path.exists('%ProgramFiles(x86)%\\Microsoft Visual Studio\\2017'):
                 vs_version = '15.0'
             elif os.path.exists('%ProgramFiles(x86)%\\Microsoft Visual Studio 14'):
                 vs_version = '14.0'
