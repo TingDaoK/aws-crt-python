@@ -12,6 +12,7 @@
 # permissions and limitations under the License.
 
 import _aws_crt_python
+from enum import Enum
 
 def is_alpn_available():
     return _aws_crt_python.aws_py_is_alpn_available()
@@ -31,14 +32,13 @@ class ClientBootstrap(object):
         self.elg = elg
         self._internal_bootstrap = _aws_crt_python.aws_py_io_client_bootstrap_new(self.elg._internal_elg)
 
-TlsVersion = type('TlsVersion', (), dict(
-    SSLv3 = 0,
-    TLSV1 = 1,
-    TLSV1_1 = 2,
-    TLSV1_2 = 3,
-    TLSV1_3 = 4,
-    Default = 128,
-))
+class TlsVersion(Enum):
+    SSL_V3 = 0
+    TLS_V1 = 1
+    TLS_V1_1 = 2
+    TLS_V1_2 = 3
+    TLS_V1_3 = 4
+    DEFAULT = 128
 
 class TlsContextOptions(object):
     __slots__ = ['min_tls_ver', 'ca_file', 'ca_path', 'alpn_list', 'certificate_path', 'private_key_path', 'pkcs12_path', 'pkcs12_password', 'verify_peer']
@@ -48,7 +48,7 @@ class TlsContextOptions(object):
         for slot in self.__slots__:
             setattr(self, slot, None)
 
-        self.min_tls_ver = TlsVersion.Default
+        self.min_tls_ver = TlsVersion.DEFAULT
 
     def override_default_trust_store(self, ca_path, ca_file):
 

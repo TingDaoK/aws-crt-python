@@ -13,20 +13,26 @@
 
 import _aws_crt_python
 from aws_crt.io import ClientBootstrap, ClientTlsContext
+from concurrent.futures import Future
+from enum import Enum
 
-def _default_on_connect(return_code, session_present):
-    pass
-def _default_on_disconnect(return_code):
-    return False
+class QoS(Enum):
+    """Quality of Service"""
+    AT_MOST_ONCE = 0
+    AT_LEAST_ONCE = 1
+    AtLeastOnce=1 # DELETEME
+    EXACTLY_ONCE = 2
 
-QoS = type('QoS', (), dict(
-    AtMostOnce = 0,
-    AtLeastOnce = 1,
-    ExactlyOnce = 2,
-))
+class ConnectReturnCode(Enum):
+    ACCEPTED = 0
+    UNACCEPTABLE_PROTOCOL_VERSION = 1
+    IDENTIFIER_REJECTED = 2
+    SERVER_UNAVAILABLE = 3
+    BAD_USERNAME_OR_PASSWORD = 4
+    NOT_AUTHORIZED = 5
 
 class Will(object):
-    __slots__ = ['topic', 'qos', 'payload', 'retain']
+    __slots__ = ('topic', 'qos', 'payload', 'retain')
 
     def __init__(self, topic, qos, payload, retain):
         self.topic = topic
@@ -35,7 +41,7 @@ class Will(object):
         self.retain = retain
 
 class Client(object):
-    __slots__ = ['_internal_client', 'bootstrap', 'tls_ctx']
+    __slots__ = ('_internal_client', 'bootstrap', 'tls_ctx')
 
     def __init__(self, bootstrap, tls_ctx = None):
         assert isinstance(bootstrap, ClientBootstrap)
@@ -45,58 +51,66 @@ class Client(object):
         self.tls_ctx = tls_ctx
         self._internal_client = _aws_crt_python.aws_py_mqtt_client_new(self.bootstrap._internal_bootstrap)
 
+class ConnAck(object):
+    __slots__ = ('session_present') # Not passing return code because non-zero results in exception
+
+class SubAck(object):
+    __slots__ = ('packet_id', 'topic', 'qos')
+
+class UnsubAck(object):
+    __slots__ = ('packet_id', 'topic')
+
+class PubAck(object):
+    __slots__ = ('packet_id') # topic?
+
+class OperationError(Exception):
+    __slots__ = ('packet_id')
+
+class ConnectionRejectedError(Exception):
+    __slots__ = ('return_code')
+
+class SubscriptionRejectedError(Exception):
+    __slots__ = ('packet_id') # UGHHHH how to transmit packet_id to unexpected failures
+
 class Connection(object):
-    __slots__ = ['_internal_connection', 'client', 'client_id', 'will']
 
-    def __init__(self, client, client_id):
-
-        assert isinstance(client, Client)
-
-        self.client = client
-        self.client_id = client_id
-
-    def connect(self,
+    def __init__(self,
+            client, client_id,
             host_name, port,
-            on_connect=_default_on_connect,
-            on_disconnect=_default_on_disconnect,
+            on_connection_interrupted=None,
+            on_connection_resumed=None,
             use_websocket=False, alpn=None,
             clean_session=True, keep_alive=0,
             will=None,
             username=None, password=None):
+        # connection is created, but we don't call connect() on it yet.
+        # We do this so that connect() can return a future which is awaitable
+        # And also so users can set up subscriptions before initiating a persistent connect()
+        pass
 
-        assert use_websocket == False
+    def connect(self): # we're still debating the params for this vs constructor
+        return Future() # Future will have a Connack result, or an exception such as ConnectionRejectedError
 
-        assert will is None or isinstance(will, Will)
+    def reconnect(self, respect_backoff=True):
+        pass # like connect but uses same params as last time
 
-        tls_ctx_cap = None
-        if self.client.tls_ctx:
-            tls_ctx_cap = self.client.tls_ctx._internal_tls_ctx
+    def disconnect(self, is_final=True):
+         # This is treated like a kill() command, doing anything else with the
+         # Connection after this results in exceptions
 
-        self._internal_connection = _aws_crt_python.aws_py_mqtt_client_connection_new(
-            self.client._internal_client,
-            tls_ctx_cap,
-            host_name,
-            port,
-            self.client_id,
-            keep_alive,
-            on_connect,
-            on_disconnect,
-            will,
-            username,
-            password,
-            )
+        return Future() # Not sure if Future should contain anything?
 
-    def disconnect(self):
-        _aws_crt_python.aws_py_mqtt_client_connection_disconnect(self._internal_connection)
+    def subscribe(self, topic, qos, callback):
+        packet_id = 1234
+        return Future(), packet_id # Future will contain Suback
 
-    def subscribe(self, topic, qos, callback, suback_callback=None):
-        return _aws_crt_python.aws_py_mqtt_client_connection_subscribe(self._internal_connection, topic, qos, callback, suback_callback)
+    def unsubscribe(self, topic):
+        packet_id = 1234
+        return Future(), packet_id # Future will contain UnsubAck
 
-    def unsubscribe(self, topic, unsuback_callback=None):
-        return _aws_crt_python.aws_py_mqtt_client_connection_unsubscribe(self._internal_connection, topic, unsuback_callback)
-
-    def publish(self, topic, payload, qos, retain=False, puback_callback=None):
-        return _aws_crt_python.aws_py_mqtt_client_connection_publish(self._internal_connection, topic, payload, qos, retain, puback_callback)
+    def publish(self, topic, payload, qos, retain=False):
+        packet_id = 1234
+        return Future(), packet_id # Future wil contain PubAck
 
     def ping(self):
-        _aws_crt_python.aws_py_mqtt_client_connection_ping(self._internal_connection)
+        pass
