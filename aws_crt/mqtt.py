@@ -82,7 +82,11 @@ class Connection(object):
             use_websocket=False, alpn=None,
             clean_session=True, keep_alive=0,
             will=None,
-            username=None, password=None):
+            username=None, password=None,
+            connect_timeout_sec=5.0,
+            reconnect_min_timeout_sec=5.0,
+            reconnect_max_timeout_sec=60.0,
+            ):
         # connection is created, but we don't call connect() on it yet.
         # We do this so that connect() can return a future which is awaitable
         # And also so users can set up subscriptions before initiating a persistent connect()
