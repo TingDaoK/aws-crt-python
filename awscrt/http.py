@@ -16,10 +16,6 @@ from concurrent.futures import Future
 from enum import IntEnum
 from awscrt.io import ClientBootstrap, TlsConnectionOptions, SocketOptions, ServerBootstrap
 
-"""
-Base class for http connection
-"""
-
 
 class HttpConnection(object):
     """
@@ -240,11 +236,7 @@ class HttpServer(object):
         close the server, no more connections will be accepted, a future object will be returned, and when the close process finishes
         the future result or exception will be set.
         """
-        try:
-            _aws_crt_python.aws_py_http_server_release(self._native_handle)
-        except Exception as e:
-            self._destroy_complete.set_exception(e)
-
+        _aws_crt_python.aws_py_http_server_release(self._native_handle)
         return self._destroy_complete
 
 
@@ -268,7 +260,7 @@ class HttpRequestHandler(object):
         return an bool as Error or not (False to continue processing the stream, True to indicate failure and cancel the stream) 
         """
         assert connection is not None
-
+        
         def on_stream_completed(error_code):
             self._stream_completed.set_result(error_code)
 
@@ -301,7 +293,8 @@ class HttpRequestHandler(object):
                                                                                             on_stream_completed,
                                                                                             on_request_headers_received,
                                                                                             self._on_incoming_body,
-                                                                                            self._on_request_done)
+                                                                                            self._on_request_done,
+                                                                                            self)
 
     def send_response(self, response):
         try:

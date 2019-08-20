@@ -40,6 +40,7 @@ struct py_http_stream {
 
     /* only for server side */
     PyObject *on_request_done;
+    PyObject *py_request_handler;
 };
 
 void native_http_stream_destructor(PyObject *http_stream_capsule);

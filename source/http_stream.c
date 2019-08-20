@@ -144,7 +144,9 @@ void native_on_stream_complete(struct aws_http_stream *internal_stream, int erro
     Py_XDECREF(stream->on_stream_completed);
     Py_XDECREF(stream->on_incoming_body);
     Py_XDECREF(stream->outgoing_body);
-
+    if(stream->py_request_handler) {
+        Py_XDECREF(stream->py_request_handler);
+    }
     PyGILState_Release(state);
 }
 

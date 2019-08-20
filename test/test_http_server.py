@@ -170,7 +170,7 @@ class TestServerRequestResponse(unittest.TestCase):
 
         self.server_request_done_futrue = Future()
 
-        def server_request_done():
+        def server_request_done(request_handler):
             self.server_request_done_futrue.set_result(True)
             Error = False
             return Error
