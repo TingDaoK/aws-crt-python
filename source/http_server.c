@@ -396,7 +396,7 @@ PyObject *aws_py_http_connection_configure_server(PyObject *self, PyObject *args
     Py_RETURN_NONE;
 
 error:
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static int s_on_incoming_request_header_block_done(
@@ -420,7 +420,7 @@ static int s_on_incoming_request_header_block_done(
     PyObject *has_body_obj = has_body ? Py_True : Py_False;
     if (stream->on_incoming_headers_received) {
         PyObject *result = PyObject_CallFunction(
-            stream->on_incoming_headers_received, "(OOOO)", stream->received_headers, py_method, py_uri, has_body_obj);
+            stream->on_incoming_headers_received, "(OOOOO)", stream->py_request_handler, stream->received_headers, py_method, py_uri, has_body_obj);
         if (result) {
             Py_DECREF(result);
         } else {
@@ -451,7 +451,7 @@ static int s_on_request_done(struct aws_http_stream *internal_stream, void *user
     bool error = false;
     PyGILState_STATE state = PyGILState_Ensure();
     if (stream->on_request_done) {
-        PyObject *result = PyObject_CallFunction(stream->on_request_done, NULL);
+        PyObject *result = PyObject_CallFunction(stream->on_request_done, "(O)", stream->py_request_handler);
         if (result) {
             error = result == Py_True;
             Py_XDECREF(result);
@@ -488,15 +488,17 @@ PyObject *aws_py_http_stream_new_server_request_handler(PyObject *self, PyObject
     PyObject *on_incoming_headers_received = NULL;
     PyObject *on_incoming_body = NULL;
     PyObject *on_request_done = NULL;
+    PyObject *py_request_handler = NULL;
 
     if (!PyArg_ParseTuple(
             args,
-            "OOOOO",
+            "OOOOOO",
             &http_connection_capsule,
             &on_stream_completed,
             &on_incoming_headers_received,
             &on_incoming_body,
-            &on_request_done)) {
+            &on_request_done,
+            &py_request_handler)) {
         PyErr_SetNone(PyExc_ValueError);
         goto clean_up_stream;
     }
@@ -509,6 +511,10 @@ PyObject *aws_py_http_stream_new_server_request_handler(PyObject *self, PyObject
         PyErr_SetString(PyExc_ValueError, "on_incoming_headers_received callback is required");
         goto clean_up_stream;
     }
+    if(py_request_handler == Py_None) {
+        PyErr_SetString(PyExc_ValueError, "the python request handler instance is required");
+        goto clean_up_stream;    
+    }
     py_server_connection = PyCapsule_GetPointer(http_connection_capsule, s_capsule_name_http_connection);
     if (!py_server_connection) {
         goto clean_up_stream;
@@ -518,6 +524,7 @@ PyObject *aws_py_http_stream_new_server_request_handler(PyObject *self, PyObject
     options.server_connection = py_server_connection->connection;
     /* save the headers into stream->received_headers */
     stream->received_headers = PyDict_New();
+    stream->py_request_handler = py_request_handler;
     options.on_request_headers = native_on_incoming_headers;
     options.on_request_header_block_done = s_on_incoming_request_header_block_done;
     options.on_complete = native_on_stream_complete;
@@ -557,6 +564,7 @@ PyObject *aws_py_http_stream_new_server_request_handler(PyObject *self, PyObject
     stream->connection_capsule = http_connection_capsule;
     Py_INCREF(stream->connection_capsule);
     Py_XINCREF(on_stream_completed);
+    Py_XINCREF(py_request_handler);
     Py_XINCREF(on_incoming_headers_received);
     return stream->capsule;
 
@@ -639,7 +647,6 @@ PyObject *aws_py_http_stream_server_send_response(PyObject *self, PyObject *args
     Py_RETURN_NONE;
 
 error:
-    /* ?The PyObjects? */
     aws_http_message_destroy(response);
     return NULL;
 }

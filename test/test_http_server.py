@@ -170,13 +170,13 @@ class TestServerRequestResponse(unittest.TestCase):
 
         self.server_request_done_futrue = Future()
 
-        def server_request_done():
+        def server_request_done(request_handler):
             self.server_request_done_futrue.set_result(True)
             Error = False
             return Error
 
         def on_incoming_request(connection):
-            request_handler = http.HttpRequestHandler(connection, self.on_incoming_body, server_request_done)
+            request_handler = http.HttpRequestHandler(connection, None, self.on_incoming_body, server_request_done)
             self.request_handler_future.set_result(request_handler)
             return request_handler
 

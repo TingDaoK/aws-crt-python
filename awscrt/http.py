@@ -16,11 +16,6 @@ from concurrent.futures import Future
 from enum import IntEnum
 from awscrt.io import ClientBootstrap, TlsConnectionOptions, SocketOptions, ServerBootstrap
 
-"""
-Base class for http connection
-"""
-
-
 class HttpConnection(object):
     """
     Father Class of HttpClientConnection and HttpServerConnection. Meaningless if called individually.
@@ -240,11 +235,7 @@ class HttpServer(object):
         close the server, no more connections will be accepted, a future object will be returned, and when the close process finishes
         the future result or exception will be set.
         """
-        try:
-            _aws_crt_python.aws_py_http_server_release(self._native_handle)
-        except Exception as e:
-            self._destroy_complete.set_exception(e)
-
+        _aws_crt_python.aws_py_http_server_release(self._native_handle)
         return self._destroy_complete
 
 
@@ -256,9 +247,9 @@ class HttpRequestHandler(object):
     """
     __slots__ = ('_connection', 'path_and_query', 'method', '_on_incoming_body', '_stream', 'request_headers',
                  'has_request_body', '_native_handle', '_on_request_done', '_stream_completed', 'has_incoming_body'
-                 , 'request_header_received')
+                 , 'request_header_received', '_on_request_headers_received')
 
-    def __init__(self, connection, on_incoming_body=None, on_request_done=None):
+    def __init__(self, connection, on_request_headers_received = None, on_incoming_body=None, on_request_done=None):
         """
         ONLY CALLED FROM on_incoming_request CALLBACK
         
@@ -272,12 +263,12 @@ class HttpRequestHandler(object):
         def on_stream_completed(error_code):
             self._stream_completed.set_result(error_code)
 
-        def on_request_headers_received(headers, method, uri, has_body):
-            self.request_headers = headers
-            self.method = method
-            self.path_and_query = uri
-            self.has_incoming_body = has_body
-            self.request_header_received.set_result(True)
+        def default_on_request_headers_received(request_handler, headers, method, uri, has_body):
+            request_handler.request_headers = headers
+            request_handler.method = method
+            request_handler.path_and_query = uri
+            request_handler.has_incoming_body = has_body
+            request_handler.request_header_received.set_result(True)
 
         for slot in self.__slots__:
             setattr(self, slot, None)
@@ -285,6 +276,10 @@ class HttpRequestHandler(object):
         self._connection = connection
         self._on_incoming_body = on_incoming_body
         self._on_request_done = on_request_done
+        if on_request_headers_received == None:
+            self._on_request_headers_received = default_on_request_headers_received
+        else:
+            self._on_request_headers_received = on_request_headers_received
 
         self._stream = None
         self.path_and_query = None
@@ -299,9 +294,10 @@ class HttpRequestHandler(object):
 
         self._native_handle = _aws_crt_python.aws_py_http_stream_new_server_request_handler(self._connection,
                                                                                             on_stream_completed,
-                                                                                            on_request_headers_received,
+                                                                                            self._on_request_headers_received,
                                                                                             self._on_incoming_body,
-                                                                                            self._on_request_done)
+                                                                                            self._on_request_done,
+                                                                                            self)
 
     def send_response(self, response):
         try:
