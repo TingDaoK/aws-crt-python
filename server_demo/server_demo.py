@@ -11,8 +11,6 @@ from awscrt import io, http
 from urllib.parse import urlparse
 from requests_toolbelt.multipart import decoder
 
-# import ptvsd
-
 log_level = io.LogLevel.NoLogs
 log_level = io.LogLevel.Error
 log_output = 'stderr'
@@ -59,18 +57,8 @@ def has_handle(path):
 
     return False
 
-def path_check(url):
-    pathes = url.split('/')
-    upper = 0
-    lower = 0
-    for i in pathes:
-        if len(i) == 0:
-            continue
-        if i == "..":
-            upper = upper+1
-        elif "." not in i:
-            lower = lower + 1
-    return upper <= lower
+def put_path_check(url):
+    return os.path.abspath(url).split("/")[-2] == received_dir.split("/")[-1]
 
 def create_html(body):
     html = "<!DOCTYPE html>\n<html>\n<head>\n" + "<!-- Required meta tags -->\n" + "<meta charset=\"utf-8\">\n" + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, shrink-to-fit=no\">\n" + "<title>Server Demo</title>\n" + "<link rel=\"icon\" href=\"img/favicon.png\">\n" + "<!-- Bootstrap CSS -->\n" + "<link rel=\"stylesheet\" href=\"css/bootstrap.min.css\">\n" + "<!-- animate CSS -->\n" + "<link rel=\"stylesheet\" href=\"css/animate.css\">\n" + "<!-- owl carousel CSS -->\n" + "<link rel=\"stylesheet\" href=\"css/owl.carousel.min.css\">\n" + "<!-- themify CSS -->\n" + "<link rel=\"stylesheet\" href=\"css/themify-icons.css\">\n" + "<!-- flaticon CSS -->\n" + "<link rel=\"stylesheet\" href=\"css/liner_icon.css\">\n" + "<link rel=\"stylesheet\" href=\"css/search.css\">\n" + "<!-- style CSS -->\n" + "<link rel=\"stylesheet\" href=\"css/style.css\">\n" + "</head>\n" + "<body>\n" + body + "</body>\n</html>\n "
@@ -90,8 +78,26 @@ def create_html_put_success(url):
     body = "<h1>Your put request to {} succeed!</h1>\n".format(url)
     return create_html(body)
 
+def create_binary_html(body):
+    html = b'<!DOCTYPE html>\n<html>\n<body>\n' + body + b'</body>\n</html>\n'
+    return html
 
-def _set_html_response(response_data_file=None, response_string=None):
+def create_form_demo_body(request_handler, request_body):
+    '''
+    Byte type request_body
+    '''
+    if request_handler.method == "POST":
+        body = "<h1>Your POST request succeed!</h1>\n"
+        body = body + "<h1>Your POST request body is:</h1>\n<p>"
+    else:
+        body = "<h1>Your GET request succeed!</h1>\n"
+        body = body + "<h1>Your GET request query is:</h1>\n<p>"
+    body = body.encode(encoding='utf-8')
+    body = body+request_body
+    body = body + b'</p>'
+    return create_binary_html(body)
+
+def _set_html_response(response_data_file = None, response_string = None, response_binary = None):
     data_file = response_data_file
 
     response_status = 200
@@ -107,6 +113,10 @@ def _set_html_response(response_data_file=None, response_string=None):
         response_body_len = len(response_string)
         response_body = response_string.encode(encoding='utf-8')
         response_body_stream = BytesIO(response_body)
+
+    elif response_binary != None:
+        response_body_len = len(response_binary)
+        response_body_stream = BytesIO(response_binary)
 
     if response_body_len != 0:
         response_headers['content-length'] = str(response_body_len)
@@ -134,19 +144,6 @@ def parse_query(query):
         query_dic[key_val[0]] = key_val[1]
     return query_dic
 
-def form_demo_response(request_handler):
-    urlparse_output = urlparse(request_handler.path_and_query)
-    if request_handler.method == "GET":
-        query = urlparse_output.query
-        query_dic = parse_query(query)
-
-    elif request_handler.method == "POST":
-        '''
-        Body should be a multipart form
-        '''
-
-
-
 
 class ServerRequest(object):
 
@@ -157,6 +154,8 @@ class ServerRequest(object):
         self.save_file_name = 0
         self.write_block = False
         self.path_invalid = False
+        self.form_demo = False
+        self.body_buffer = b''
 
     def _do_GET(self, request_handler):
         response = None
@@ -165,7 +164,9 @@ class ServerRequest(object):
             if urlparse_output.path == "/":
                 response = _set_html_response(Server_dir + "/new_test.html")
             elif urlparse_output.path == "/form_demo":
-                response = form_demo_response(request_handler)
+                response_body = create_form_demo_body(request_handler, urlparse_output.query.encode(encoding='utf-8'))
+                response = _set_html_response(None, None, response_body)
+                response.outgoing_headers['Content-Type'] = 'text/html'    
             elif  urlparse_output.path.endswith('.html'):
                 response = _set_html_response(Server_dir + urlparse_output.path)
                 response.outgoing_headers['Content-Type'] = 'text/html'
@@ -183,13 +184,18 @@ class ServerRequest(object):
         except IOError:
             response = _set_notfound_response()
 
-        stream_completed = request_handler.send_response(response)
+        request_handler.send_response(response)
 
     def _do_POST(self, request_handler):
-        response_body = create_html_put_block(request_handler.path_and_query)
-        response = _set_html_response(None, response_body)
-        response.outgoing_headers['Content-Type'] = 'text/html'
-        stream_completed = request_handler.send_response(response)
+        urlparse_output = urlparse(request_handler.path_and_query)
+        if urlparse_output.path == "/form_demo":
+            self.form_demo = True
+            #send response when the incoming body done else send response now
+        else:
+            response_body = create_html_put_block(request_handler.path_and_query)
+            response = _set_html_response(None, response_body)
+            response.outgoing_headers['Content-Type'] = 'text/html'
+            request_handler.send_response(response)
 
     def _do_PUT(self, request_handler):
         if self.write_block:
@@ -203,14 +209,21 @@ class ServerRequest(object):
             response_body = create_html_put_success(request_handler.path_and_query)
             response = _set_html_response(None, response_body)
         response.outgoing_headers['Content-Type'] = 'text/html'
-        stream_completed = request_handler.send_response(response)
+        request_handler.send_response(response)
 
 
     def on_incoming_body(self, body_data):
+        if self.form_demo:
+            '''
+            parse incoming body and do some awesome thing? No, just left this to backend developer...
+            '''
+            self.body_buffer = self.body_buffer + body_data
+            return 
         if self.output == None:
             return
         elif self.output.closed:
             return
+
         self.output.write(body_data)
 
 
@@ -219,6 +232,11 @@ class ServerRequest(object):
         if self.output != None:
             self.output.close()
             self.output = None
+        if self.form_demo:
+            response_body = create_form_demo_body(request_handler, self.body_buffer)
+            response = _set_html_response(None, None, response_body)
+            response.outgoing_headers['Content-Type'] = 'text/html'
+            request_handler.send_response(response)
         Error = False
         return Error
 
@@ -246,7 +264,7 @@ class ServerRequest(object):
                 save_file_dir = received_dir + urlparse_output.path
                 if os.path.isfile(save_file_dir):
                     self.write_block = True
-                if not path_check(urlparse_output.path):
+                if not put_path_check(save_file_dir):
                     self.path_invalid = True
                     self.write_block = True
 
