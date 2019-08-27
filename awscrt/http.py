@@ -254,6 +254,9 @@ class HttpRequestHandler(object):
         ONLY CALLED FROM on_incoming_request CALLBACK
         
         connection is http.HttpConnection._native_handle object
+        on_request_headers_received is invoked as the decoding of request headers is finished. 
+        It take (request_handler: http.HttpRequestHandler, headers: an array of request headers, method: string, request method
+        uri: string the request uri, has_body: boolean.) as parameters.
         on_incoming_body is invoked as the request body is received. It takes a single argument of type bytes.
         on_request_done is invoked as the request finished receiving. It takes no argument but have to 
         return an bool as Error or not (False to continue processing the stream, True to indicate failure and cancel the stream) 

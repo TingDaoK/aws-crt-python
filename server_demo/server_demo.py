@@ -312,12 +312,13 @@ class ServerDemo(object):
                                                                                   self._on_server_conn_shutdown))
 
     def help(self, msg):
-        print("help info: Nothing helpful yet, just ask @dengket for help~~")
+        print("\"help\": for help,\n\"create\": create a new server in general,\n\"create local\": create a local server of random host name,\n\"create ipv4\": create an ipv4 server, binding with 127.0.0.2:8127\n\"shutdown\": shutdown the server and all existing connections, and exit the program after the shutdown process succeed \n\"connection num\": print out the number of existing connections")
 
     def create(self, msg):
         print("Now create a server")
         if self.server != None:
             print("server already created")
+            return 
         hostname = input("Please input the host name\n")
         port = input("Please input the port num\n")
         socket_domain = input("Please input the options for socket_domain: (local/ ipv4/ ipv6)\n")
@@ -345,6 +346,7 @@ class ServerDemo(object):
         print("Now create a local server")
         if self.server != None:
             print("server already created")
+            return 
         random.seed()
         hostname = str(random.random())
         port = 0
@@ -365,6 +367,7 @@ class ServerDemo(object):
         print("Now create a ipv4 server")
         if self.server != None:
             print("server already created")
+            return 
         hostname = "127.0.0.2"
         port = 8127
         event_loop_group = io.EventLoopGroup(1)
