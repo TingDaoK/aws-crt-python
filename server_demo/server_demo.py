@@ -6,6 +6,7 @@ import random
 from concurrent.futures import Future
 import cgi
 import psutil
+
 sys.path.append("..")
 from awscrt import io, http
 from urllib.parse import urlparse
@@ -42,6 +43,7 @@ def get_body_format(headers):
             return postfix
     return postfix
 
+
 def has_handle(path):
     """
     Return True means this file is opened by someone else
@@ -57,8 +59,10 @@ def has_handle(path):
 
     return False
 
+
 def put_path_check(url):
     return os.path.abspath(url).split("/")[-2] == received_dir.split("/")[-1]
+
 
 def create_html(body):
     html = "<!DOCTYPE html>\n<html>\n<head>\n" + "<!-- Required meta tags -->\n" + "<meta charset=\"utf-8\">\n" + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, shrink-to-fit=no\">\n" + "<title>Server Demo</title>\n" + "<link rel=\"icon\" href=\"img/favicon.png\">\n" + "<!-- Bootstrap CSS -->\n" + "<link rel=\"stylesheet\" href=\"css/bootstrap.min.css\">\n" + "<!-- animate CSS -->\n" + "<link rel=\"stylesheet\" href=\"css/animate.css\">\n" + "<!-- owl carousel CSS -->\n" + "<link rel=\"stylesheet\" href=\"css/owl.carousel.min.css\">\n" + "<!-- themify CSS -->\n" + "<link rel=\"stylesheet\" href=\"css/themify-icons.css\">\n" + "<!-- flaticon CSS -->\n" + "<link rel=\"stylesheet\" href=\"css/liner_icon.css\">\n" + "<link rel=\"stylesheet\" href=\"css/search.css\">\n" + "<!-- style CSS -->\n" + "<link rel=\"stylesheet\" href=\"css/style.css\">\n" + "</head>\n" + "<body>\n" + body + "</body>\n</html>\n "
@@ -70,17 +74,21 @@ def create_html_put_block(url):
     body = body + "<h2>To revise it, try POST</h2>\n"
     return create_html(body)
 
+
 def create_html_put_path_invalid(url):
     body = "<h1>Your put request is blocked, because {} is invalid!</h1>\n".format(url)
     return create_html(body)
+
 
 def create_html_put_success(url):
     body = "<h1>Your put request to {} succeed!</h1>\n".format(url)
     return create_html(body)
 
+
 def create_binary_html(body):
     html = b'<!DOCTYPE html>\n<html>\n<body>\n' + body + b'</body>\n</html>\n'
     return html
+
 
 def create_form_demo_body(request_handler, request_body):
     '''
@@ -93,11 +101,12 @@ def create_form_demo_body(request_handler, request_body):
         body = "<h1>Your GET request succeed!</h1>\n"
         body = body + "<h1>Your GET request query is:</h1>\n<p>"
     body = body.encode(encoding='utf-8')
-    body = body+request_body
+    body = body + request_body
     body = body + b'</p>'
     return create_binary_html(body)
 
-def _set_html_response(response_data_file = None, response_string = None, response_binary = None):
+
+def _set_html_response(response_data_file=None, response_string=None, response_binary=None):
     data_file = response_data_file
 
     response_status = 200
@@ -136,6 +145,7 @@ def _set_notfound_response():
     response = http.HttpResponse(response_status, response_headers, response_body_stream)
     return response
 
+
 def parse_query(query):
     queries = query.split("&")
     query_dic = {}
@@ -166,8 +176,8 @@ class ServerRequest(object):
             elif urlparse_output.path == "/form_demo":
                 response_body = create_form_demo_body(request_handler, urlparse_output.query.encode(encoding='utf-8'))
                 response = _set_html_response(None, None, response_body)
-                response.outgoing_headers['Content-Type'] = 'text/html'    
-            elif  urlparse_output.path.endswith('.html'):
+                response.outgoing_headers['Content-Type'] = 'text/html'
+            elif urlparse_output.path.endswith('.html'):
                 response = _set_html_response(Server_dir + urlparse_output.path)
                 response.outgoing_headers['Content-Type'] = 'text/html'
             elif urlparse_output.path.endswith('.png'):
@@ -190,7 +200,7 @@ class ServerRequest(object):
         urlparse_output = urlparse(request_handler.path_and_query)
         if urlparse_output.path == "/form_demo":
             self.form_demo = True
-            #send response when the incoming body done else send response now
+            # send response when the incoming body done else send response now
         else:
             response_body = create_html_put_block(request_handler.path_and_query)
             response = _set_html_response(None, response_body)
@@ -211,21 +221,19 @@ class ServerRequest(object):
         response.outgoing_headers['Content-Type'] = 'text/html'
         request_handler.send_response(response)
 
-
     def on_incoming_body(self, body_data):
         if self.form_demo:
             '''
             parse incoming body and do some awesome thing? No, just left this to backend developer...
             '''
             self.body_buffer = self.body_buffer + body_data
-            return 
+            return
         if self.output == None:
             return
         elif self.output.closed:
             return
 
         self.output.write(body_data)
-
 
     def server_request_done(self, request_handler):
 
@@ -255,10 +263,10 @@ class ServerRequest(object):
                 save_file_dir = received_dir + '/' + str(self.save_file_name)
                 self.save_file_name = self.save_file_name + 1
                 save_file_dir = save_file_dir + get_body_format(headers)
-               
+
             elif method == "GET":
                 save_file_dir = self.get_method_body_file
-                
+
             elif method == "PUT":
                 urlparse_output = urlparse(request_handler.path_and_query)
                 save_file_dir = received_dir + urlparse_output.path
@@ -287,6 +295,7 @@ class ServerRequest(object):
         else:
             raise NotImplementedError("Demon: not implemented method!{}".format(request_handler.method))
 
+
 class ServerDemo(object):
     def __init__(self):
         self.server_conn_future = Future()
@@ -309,16 +318,17 @@ class ServerDemo(object):
         if error_code:
             print("----server connection fail with error_code: {}----".format(error_code))
         self.server_connection.append(http.ServerConnection.new_server_connection(connection, self._on_incoming_request,
-                                                                                  self._on_server_conn_shutdown))
+                                                                                  self._on_server_conn_shutdown))    
 
     def help(self, msg):
-        print("\"help\": for help,\n\"create\": create a new server in general,\n\"create local\": create a local server of random host name,\n\"create ipv4\": create an ipv4 server, binding with 127.0.0.2:8127\n\"shutdown\": shutdown the server and all existing connections, and exit the program after the shutdown process succeed \n\"connection num\": print out the number of existing connections")
+        print(
+            "\"help\": for help,\n\"create\": create a new server in general,\n\"create local\": create a local server of random host name,\n\"create ipv4\": create an ipv4 server, binding with 127.0.0.2:8127\n\"shutdown\": shutdown the server and all existing connections, and exit the program after the shutdown process succeed \n\"connection num\": print out the number of existing connections")
 
     def create(self, msg):
         print("Now create a server")
-        if self.server != None:
+        if self.server is not None:
             print("server already created")
-            return 
+            return
         hostname = input("Please input the host name\n")
         port = input("Please input the port num\n")
         socket_domain = input("Please input the options for socket_domain: (local/ ipv4/ ipv6)\n")
@@ -341,12 +351,12 @@ class ServerDemo(object):
             exit(-1)
         self.server = http.HttpServer(server_bootstrap, hostname, port, socket_options,
                                       self._on_incoming_connection)
-
+                                      
     def create_local(self, msg):
         print("Now create a local server")
-        if self.server != None:
+        if self.server is not None:
             print("server already created")
-            return 
+            return
         random.seed()
         hostname = str(random.random())
         port = 0
@@ -365,9 +375,9 @@ class ServerDemo(object):
 
     def create_ipv4(self, msg):
         print("Now create a ipv4 server")
-        if self.server != None:
+        if self.server is not None:
             print("server already created")
-            return 
+            return
         hostname = "127.0.0.2"
         port = 8127
         event_loop_group = io.EventLoopGroup(1)
@@ -382,10 +392,10 @@ class ServerDemo(object):
         raise NotImplementedError("Demon: not implemented method")
 
     def shutdown(self, msg):
-        print("Now shutdown the server")
+        print("Now shut down the server")
         future = http.HttpServer.close(self.server)
         if future.result():
-            print("Shutdown the server success, exiting demo!")
+            print("Shutdown of the server success, exiting demo!")
             exit(0)
 
     def connection_num(self, msg):
@@ -408,6 +418,8 @@ def commands_result(command, msg):
     method = commands.get(command)
     if method:
         method(msg)
+    else:
+        print("invalid commands, type \"help\" for help")
 
 
 while True:
