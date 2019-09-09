@@ -1,0 +1,32 @@
+//first part
+python3 server_demo.py
+
+create ipv4
+
+browser -> 127.0.0.2:8127
+a name and a text file
+
+browser -> 127.0.0.2:8127/test
+
+python3 put_req_test.py test.html
+
+browser -> 127.0.0.2:8127/test
+
+python3 put_req_test.py aws.png
+python3 put_req_test.py aws.png
+
+
+//Second part
+browser -> 127.0.0.2:8127/index
+shutdown the server
+
+//Third part
+create the server again 
+bash parallel_connections.bash
+conneciton num
+
+ls -lh huge_file.txt 
+python3 put_req_test.py huge_file.txt
+python3 put_req_test.py additional.png
+
+

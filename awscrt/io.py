@@ -207,7 +207,7 @@ class TlsContextOptions(object):
         return TlsContextOptions.create_server_with_mtls(cert_buffer, key_buffer)
 
     @staticmethod
-    def create_server(cert_buffer, key_buffer):
+    def create_server_with_mtls(cert_buffer, key_buffer):
         assert isinstance(cert_buffer, bytes)
         assert isinstance(key_buffer, bytes)
 
@@ -251,11 +251,31 @@ class ClientTlsContext(object):
         return TlsConnectionOptions(self)
 
 
+class ServerTlsContext(object):
+
+    def __init__(self, options):
+        assert isinstance(options, TlsContextOptions)
+
+        self._internal_tls_ctx = _aws_crt_python.aws_py_io_server_tls_ctx_new(
+            options.min_tls_ver.value,
+            options.ca_path,
+            options.ca_buffer,
+            options.alpn_list,
+            options.certificate_buffer,
+            options.private_key_buffer,
+            options.pkcs12_path,
+            options.pkcs12_password,
+            options.verify_peer
+        )
+
+    def new_connection_options(self):
+        return TlsConnectionOptions(self)
+
+
 class TlsConnectionOptions(object):
     __slots__ = ('tls_ctx', '_internal_tls_conn_options')
 
     def __init__(self, tls_ctx):
-        assert isinstance(tls_ctx, ClientTlsContext)
 
         self.tls_ctx = tls_ctx
         self._internal_tls_conn_options = _aws_crt_python.aws_py_io_tls_connections_options_new_from_ctx(tls_ctx._internal_tls_ctx)

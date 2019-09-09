@@ -98,9 +98,14 @@ PyObject *aws_py_io_client_bootstrap_new(PyObject *self, PyObject *args);
 PyObject *aws_py_io_server_bootstrap_new(PyObject *self, PyObject *args);
 
 /**
- * Create a new tls_ctx to be managed by a Python Capsule.
+ * Create a new client tls_ctx to be managed by a Python Capsule.
  */
 PyObject *aws_py_io_client_tls_ctx_new(PyObject *self, PyObject *args);
+
+/**
+ * Create a new server tls_ctx to be managed by a Python Capsule.
+ */
+PyObject *aws_py_io_server_tls_ctx_new(PyObject *self, PyObject *args);
 
 PyObject *aws_py_io_tls_connections_options_new_from_ctx(PyObject *self, PyObject *args);
 

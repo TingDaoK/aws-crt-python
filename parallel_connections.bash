@@ -2,8 +2,7 @@
 # Our custom function
 cust_func(){
   echo "Connect to the server $1 times..."
-  #python3 elasticurl.py -v ERROR -G http://127.0.0.2:8127/
-  python3 local_client_test.py
+  python3 elasticurl.py -v ERROR -G http://127.0.0.2:8127/
   sleep 1
 }
 # For loop 100 times

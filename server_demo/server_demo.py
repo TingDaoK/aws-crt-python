@@ -13,8 +13,8 @@ from urllib.parse import urlparse
 from requests_toolbelt.multipart import decoder
 
 log_level = io.LogLevel.NoLogs
-log_level = io.LogLevel.Error
-log_output = 'stderr'
+log_level = io.LogLevel.Trace
+log_output = 'log.txt'
 io.init_logging(log_level, log_output)
 
 Server_dir = "./server_data"
@@ -44,28 +44,12 @@ def get_body_format(headers):
     return postfix
 
 
-def has_handle(path):
-    """
-    Return True means this file is opened by someone else
-    """
-    path = os.path.abspath(path)
-    for proc in psutil.process_iter():
-        try:
-            for item in proc.open_files():
-                if path == item.path:
-                    return True
-        except Exception:
-            pass
-
-    return False
-
-
 def put_path_check(url):
     return os.path.abspath(url).split("/")[-2] == received_dir.split("/")[-1]
 
 
 def create_html(body):
-    html = "<!DOCTYPE html>\n<html>\n<head>\n" + "<!-- Required meta tags -->\n" + "<meta charset=\"utf-8\">\n" + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, shrink-to-fit=no\">\n" + "<title>Server Demo</title>\n" + "<link rel=\"icon\" href=\"img/favicon.png\">\n" + "<!-- Bootstrap CSS -->\n" + "<link rel=\"stylesheet\" href=\"css/bootstrap.min.css\">\n" + "<!-- animate CSS -->\n" + "<link rel=\"stylesheet\" href=\"css/animate.css\">\n" + "<!-- owl carousel CSS -->\n" + "<link rel=\"stylesheet\" href=\"css/owl.carousel.min.css\">\n" + "<!-- themify CSS -->\n" + "<link rel=\"stylesheet\" href=\"css/themify-icons.css\">\n" + "<!-- flaticon CSS -->\n" + "<link rel=\"stylesheet\" href=\"css/liner_icon.css\">\n" + "<link rel=\"stylesheet\" href=\"css/search.css\">\n" + "<!-- style CSS -->\n" + "<link rel=\"stylesheet\" href=\"css/style.css\">\n" + "</head>\n" + "<body>\n" + body + "</body>\n</html>\n "
+    html = "<!DOCTYPE html>\n<html>\n" + "<body>\n" + body + "</body>\n</html>\n "
     return html
 
 
@@ -91,9 +75,9 @@ def create_binary_html(body):
 
 
 def create_form_demo_body(request_handler, request_body):
-    '''
+    """
     Byte type request_body
-    '''
+    """
     if request_handler.method == "POST":
         body = "<h1>Your POST request succeed!</h1>\n"
         body = body + "<h1>Your POST request body is:</h1>\n<p>"
@@ -106,7 +90,7 @@ def create_form_demo_body(request_handler, request_body):
     return create_binary_html(body)
 
 
-def _set_html_response(response_data_file=None, response_string=None, response_binary=None):
+def set_html_response(response_data_file=None, response_string=None, response_binary=None):
     data_file = response_data_file
 
     response_status = 200
@@ -114,16 +98,16 @@ def _set_html_response(response_data_file=None, response_string=None, response_b
     response_body_stream = None
     response_body_len = 0
 
-    if data_file != None:
+    if data_file is not None:
         response_body_len = os.stat(data_file).st_size
         response_body_stream = open(data_file, 'rb')
 
-    elif response_string != None:
+    elif response_string is not None:
         response_body_len = len(response_string)
         response_body = response_string.encode(encoding='utf-8')
         response_body_stream = BytesIO(response_body)
 
-    elif response_binary != None:
+    elif response_binary is not None:
         response_body_len = len(response_binary)
         response_body_stream = BytesIO(response_binary)
 
@@ -133,7 +117,7 @@ def _set_html_response(response_data_file=None, response_string=None, response_b
     return response
 
 
-def _set_notfound_response():
+def set_notfound_response():
     data_file = Server_dir + "/not_found.html"
     response_body_len = os.stat(data_file).st_size
     response_body_stream = open(data_file, 'rb')
@@ -172,27 +156,39 @@ class ServerRequest(object):
         urlparse_output = urlparse(request_handler.path_and_query)
         try:
             if urlparse_output.path == "/":
-                response = _set_html_response(Server_dir + "/new_test.html")
+                response = set_html_response(Server_dir + "/new_test.html")
             elif urlparse_output.path == "/form_demo":
                 response_body = create_form_demo_body(request_handler, urlparse_output.query.encode(encoding='utf-8'))
-                response = _set_html_response(None, None, response_body)
+                response = set_html_response(None, None, response_body)
                 response.outgoing_headers['Content-Type'] = 'text/html'
             elif urlparse_output.path.endswith('.html'):
-                response = _set_html_response(Server_dir + urlparse_output.path)
+                response = set_html_response(Server_dir + urlparse_output.path)
                 response.outgoing_headers['Content-Type'] = 'text/html'
             elif urlparse_output.path.endswith('.png'):
-                response = _set_html_response(Server_dir + urlparse_output.path)
+                response = set_html_response(Server_dir + urlparse_output.path)
                 response.outgoing_headers['Content-Type'] = 'img/png'
             elif urlparse_output.path.endswith('.css'):
-                response = _set_html_response(Server_dir + urlparse_output.path)
+                response = set_html_response(Server_dir + urlparse_output.path)
                 response.outgoing_headers['Content-Type'] = 'text/css'
             elif urlparse_output.path.endswith('.js'):
-                response = _set_html_response(Server_dir + urlparse_output.path)
+                response = set_html_response(Server_dir + urlparse_output.path)
                 response.outgoing_headers['Content-Type'] = 'text/js'
             else:
-                response = _set_html_response(Server_dir + urlparse_output.path + '.html')
+                response = set_html_response(Server_dir + urlparse_output.path + '.html')
+                response.outgoing_headers['Content-Type'] = 'text/html'
         except IOError:
-            response = _set_notfound_response()
+            try:
+                if urlparse_output.path.endswith('.html'):
+                    response = set_html_response(received_dir + urlparse_output.path)
+                    response.outgoing_headers['Content-Type'] = 'text/html'
+                elif urlparse_output.path.endswith('.png'):
+                    response = set_html_response(received_dir + urlparse_output.path)
+                    response.outgoing_headers['Content-Type'] = 'img/png'
+                else:
+                    response = set_html_response(received_dir + urlparse_output.path + '.html')
+                    response.outgoing_headers['Content-Type'] = 'text/html'
+            except IOError:
+                response = set_notfound_response()
 
         request_handler.send_response(response)
 
@@ -203,7 +199,7 @@ class ServerRequest(object):
             # send response when the incoming body done else send response now
         else:
             response_body = create_html_put_block(request_handler.path_and_query)
-            response = _set_html_response(None, response_body)
+            response = set_html_response(None, response_body)
             response.outgoing_headers['Content-Type'] = 'text/html'
             request_handler.send_response(response)
 
@@ -211,13 +207,12 @@ class ServerRequest(object):
         if self.write_block:
             if self.path_invalid:
                 response_body = create_html_put_path_invalid(request_handler.path_and_query)
-                response = _set_html_response(None, response_body)
+                response = set_html_response(None, response_body)
             else:
                 response_body = create_html_put_block(request_handler.path_and_query)
-                response = _set_html_response(None, response_body)
+                response = set_html_response(None, response_body)
         else:
-            response_body = create_html_put_success(request_handler.path_and_query)
-            response = _set_html_response(None, response_body)
+            return
         response.outgoing_headers['Content-Type'] = 'text/html'
         request_handler.send_response(response)
 
@@ -227,8 +222,8 @@ class ServerRequest(object):
             parse incoming body and do some awesome thing? No, just left this to backend developer...
             '''
             self.body_buffer = self.body_buffer + body_data
-            return
-        if self.output == None:
+            
+        if self.output is None:
             return
         elif self.output.closed:
             return
@@ -237,12 +232,17 @@ class ServerRequest(object):
 
     def server_request_done(self, request_handler):
 
-        if self.output != None:
+        if self.output is not None:
             self.output.close()
             self.output = None
         if self.form_demo:
             response_body = create_form_demo_body(request_handler, self.body_buffer)
-            response = _set_html_response(None, None, response_body)
+            response = set_html_response(None, None, response_body)
+            response.outgoing_headers['Content-Type'] = 'text/html'
+            request_handler.send_response(response)
+        if not self.write_block and not self.path_invalid and request_handler.method == "PUT":
+            response_body = create_html_put_success(request_handler.path_and_query)
+            response = set_html_response(None, response_body)
             response.outgoing_headers['Content-Type'] = 'text/html'
             request_handler.send_response(response)
         Error = False
@@ -304,7 +304,8 @@ class ServerDemo(object):
 
     def _on_incoming_request(self, connection):
         request = ServerRequest(None)
-        request_handler = http.HttpRequestHandler(connection, request.on_request_header_received, request.on_incoming_body,
+        request_handler = http.HttpRequestHandler(connection, request.on_request_header_received,
+                                                  request.on_incoming_body,
                                                   request.server_request_done)
         request.request_handler = request_handler
         return request_handler
@@ -317,12 +318,16 @@ class ServerDemo(object):
         # configure the connection here!
         if error_code:
             print("----server connection fail with error_code: {}----".format(error_code))
+            return 
         self.server_connection.append(http.ServerConnection.new_server_connection(connection, self._on_incoming_request,
-                                                                                  self._on_server_conn_shutdown))    
+                                                                                  self._on_server_conn_shutdown))
 
     def help(self, msg):
         print(
-            "\"help\": for help,\n\"create\": create a new server in general,\n\"create local\": create a local server of random host name,\n\"create ipv4\": create an ipv4 server, binding with 127.0.0.2:8127\n\"shutdown\": shutdown the server and all existing connections, and exit the program after the shutdown process succeed \n\"connection num\": print out the number of existing connections")
+            "\"help\": for help,\n\"create\": create a new server in general,\n\"create local\": create a local "
+            "server of random host name,\n\"create ipv4\": create an ipv4 server, binding with "
+            "127.0.0.2:8127\n\"shutdown\": shutdown the server and all existing connections, and exit the program "
+            "after the shutdown process succeed \n\"connection num\": print out the number of existing connections")
 
     def create(self, msg):
         print("Now create a server")
@@ -351,7 +356,26 @@ class ServerDemo(object):
             exit(-1)
         self.server = http.HttpServer(server_bootstrap, hostname, port, socket_options,
                                       self._on_incoming_connection)
-                                      
+
+    def create_tls_server_ipv4(self, msg):
+        print("Now create a tls ipv4 server")
+        if self.server is not None:
+            print("server already created")
+            return
+        hostname = "127.0.0.2"
+        port = 4096
+        event_loop_group = io.EventLoopGroup(1)
+        server_bootstrap = io.ServerBootstrap(event_loop_group)
+        socket_options = io.SocketOptions()
+        socket_options.domain = io.SocketDomain.IPv4
+        tls_ctx_options = io.TlsContextOptions.create_server_from_path("./unittests.crt", "./unittests.key")
+        tls_ctx = io.ServerTlsContext(tls_ctx_options)
+        tls_connection_options = tls_ctx.new_connection_options()
+        self.server = http.HttpServer(server_bootstrap, hostname, port, socket_options,
+                                      self._on_incoming_connection, tls_connection_options = tls_connection_options)
+        print("server create success on {}:{}".format(hostname, port))
+
+
     def create_local(self, msg):
         print("Now create a local server")
         if self.server is not None:
@@ -374,7 +398,7 @@ class ServerDemo(object):
         print("server create success on {}:{}".format(hostname, port))
 
     def create_ipv4(self, msg):
-        print("Now create a ipv4 server")
+        print("Now create an ipv4 server")
         if self.server is not None:
             print("server already created")
             return
@@ -411,6 +435,7 @@ def commands_result(command, msg):
         "create": server_demo.create,
         "create local": server_demo.create_local,
         "create ipv4": server_demo.create_ipv4,
+        "create tls": server_demo.create_tls_server_ipv4,
         "create ipv6": server_demo.create_ipv6,
         "shutdown": server_demo.shutdown,
         "connection num": server_demo.connection_num

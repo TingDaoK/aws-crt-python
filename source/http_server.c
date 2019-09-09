@@ -91,7 +91,7 @@ static void s_on_incoming_connection(
     struct py_http_server *py_server = user_data;
     PyGILState_STATE state = PyGILState_Ensure();
     PyObject *result = NULL;
-    PyObject *connection_capsule = NULL;
+    PyObject *connection_capsule = Py_None;
 
     PyObject *on_incoming_conn_cb = py_server->on_incoming_connection;
 

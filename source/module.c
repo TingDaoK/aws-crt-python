@@ -169,6 +169,7 @@ static PyMethodDef s_module_methods[] = {
     {"aws_py_io_client_bootstrap_new", aws_py_io_client_bootstrap_new, METH_VARARGS, NULL},
     {"aws_py_io_server_bootstrap_new", aws_py_io_server_bootstrap_new, METH_VARARGS, NULL},
     {"aws_py_io_client_tls_ctx_new", aws_py_io_client_tls_ctx_new, METH_VARARGS, NULL},
+    {"aws_py_io_server_tls_ctx_new", aws_py_io_server_tls_ctx_new, METH_VARARGS, NULL},
     {"aws_py_io_tls_connections_options_new_from_ctx",
      aws_py_io_tls_connections_options_new_from_ctx,
      METH_VARARGS,
